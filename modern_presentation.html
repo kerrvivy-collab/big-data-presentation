@@ -1,855 +1,647 @@
 <!DOCTYPE html>
-<html lang="fr">
-
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Streaming Météo en Temps Réel</title>
-
-    <!-- GSAP for Animations -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link
-        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@400;700&display=swap"
-        rel="stylesheet">
-    <!-- Highlight.js for Python Code -->
-    <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-
-    <style>
-        :root {
-            --bg-deep: #050510;
-            --bg-card: rgba(15, 23, 42, 0.6);
-            --neon-cyan: #00f0ff;
-            --neon-purple: #ff00aa;
-            --neon-orange: #ff6a00;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --glass-border: rgba(255, 255, 255, 0.1);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Outfit', sans-serif;
-            background-color: var(--bg-deep);
-            color: var(--text-main);
-            overflow: hidden;
-            height: 100vh;
-            width: 100vw;
-            background-image:
-                radial-gradient(circle at 15% 50%, rgba(0, 240, 255, 0.08), transparent 25%),
-                radial-gradient(circle at 85% 30%, rgba(255, 0, 170, 0.08), transparent 25%);
-        }
-
-        h1,
-        h2,
-        h3 {
-            font-family: 'Space Grotesk', sans-serif;
-        }
-
-        #presentation-container {
-            width: 100vw;
-            height: 100vh;
-            position: relative;
-        }
-
-        .slide {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            padding: 4rem;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            opacity: 0;
-            visibility: hidden;
-            z-index: 1;
-        }
-
-        .slide.active {
-            visibility: visible;
-            z-index: 10;
-        }
-
-        .controls {
-            position: fixed;
-            bottom: 2rem;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 1.5rem;
-            z-index: 100;
-            background: rgba(15, 23, 42, 0.8);
-            padding: 0.8rem 2rem;
-            border-radius: 50px;
-            backdrop-filter: blur(15px);
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-        }
-
-        .btn-nav {
-            background: transparent;
-            border: none;
-            color: var(--text-main);
-            font-size: 1.5rem;
-            cursor: pointer;
-            transition: color 0.3s, transform 0.3s;
-        }
-
-        .btn-nav:hover {
-            color: var(--neon-cyan);
-            transform: scale(1.2);
-        }
-
-        .progress-dots {
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-        }
-
-        .dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: var(--glass-border);
-            transition: all 0.3s;
-        }
-
-        .dot.active {
-            background: var(--neon-cyan);
-            box-shadow: 0 0 10px var(--neon-cyan);
-            transform: scale(1.3);
-        }
-
-        .glass-panel {
-            background: var(--bg-card);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            padding: 3rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            max-width: 1200px;
-            width: 100%;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .glass-panel::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
-        }
-
-        .title-massive {
-            font-size: clamp(3rem, 6vw, 5rem);
-            font-weight: 800;
-            line-height: 1.1;
-            text-align: center;
-            background: linear-gradient(135deg, #fff, var(--text-muted));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 1rem;
-        }
-
-        .gradient-text {
-            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: shine 4s linear infinite;
-            background-size: 200% auto;
-        }
-
-        .subtitle {
-            font-size: 1.5rem;
-            color: var(--text-muted);
-            text-align: center;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 3rem;
-            align-items: center;
-        }
-
-        /* Mockups & UI Elements */
-        .mockup-frame {
-            background: #1e1e1e;
-            border-radius: 16px;
-            border: 1px solid #333;
-            overflow: hidden;
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(0, 240, 255, 0.1);
-            position: relative;
-            transition: transform 0.5s;
-        }
-
-        /* 3D Tilt Effect applied to the frame itself */
-        .tilt-effect:hover {
-            transform: perspective(1000px) rotateX(5deg) rotateY(-5deg) scale(1.05) translateY(-10px);
-            box-shadow: -20px 20px 60px rgba(0, 240, 255, 0.3), 0 0 40px rgba(255, 0, 170, 0.2);
-        }
-
-        .mockup-header {
-            background: #2d2d2d;
-            padding: 0.8rem 1rem;
-            display: flex;
-            gap: 0.5rem;
-            border-bottom: 1px solid #444;
-        }
-
-        .mockup-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-        }
-
-        .mockup-dot.r {
-            background: #ff5f56;
-        }
-
-        .mockup-dot.y {
-            background: #ffbd2e;
-        }
-
-        .mockup-dot.g {
-            background: #27c93f;
-        }
-
-        .mockup-content {
-            width: 100%;
-            height: 350px;
-            background-color: #0f172a;
-            background-size: cover;
-            background-position: center;
-        }
-
-        /* Code IDE */
-        .ide-content {
-            background: #282c34;
-            padding: 1.5rem;
-            font-family: 'Fira Code', monospace;
-            font-size: 0.9rem;
-            overflow: auto;
-            height: 350px;
-            text-align: left;
-            line-height: 1.5;
-        }
-
-        /* Blueprint Frame */
-        .blueprint-frame {
-            border: 2px solid var(--neon-cyan);
-            border-radius: 12px;
-            padding: 10px;
-            box-shadow: 0 0 20px rgba(0, 240, 255, 0.3), inset 0 0 20px rgba(0, 240, 255, 0.2);
-            background: rgba(0, 240, 255, 0.05);
-            position: relative;
-        }
-
-        .blueprint-frame::before {
-            content: '';
-            position: absolute;
-            top: -5px;
-            left: -5px;
-            right: -5px;
-            bottom: -5px;
-            border: 1px dashed var(--neon-cyan);
-            opacity: 0.5;
-            border-radius: 16px;
-            pointer-events: none;
-        }
-
-        /* Bullet List */
-        .mission-list {
-            list-style: none;
-            display: flex;
-            flex-direction: column;
-            gap: 1.2rem;
-        }
-
-        .mission-item {
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-            background: rgba(255, 255, 255, 0.03);
-            padding: 1.2rem;
-            border-radius: 12px;
-            border-left: 4px solid var(--neon-cyan);
-            transition: all 0.3s;
-        }
-
-        .mission-item:hover {
-            transform: translateX(10px);
-            background: rgba(255, 255, 255, 0.06);
-        }
-
-        .mission-icon {
-            font-size: 1.8rem;
-            color: var(--neon-cyan);
-        }
-
-        /* Comparison Cards */
-        .comparison-card {
-            background: rgba(255, 255, 255, 0.02);
-            padding: 2rem;
-            border-radius: 16px;
-            border: 1px solid var(--glass-border);
-            transition: all 0.4s;
-            text-align: center;
-        }
-
-        .comparison-card:hover {
-            transform: translateY(-10px);
-        }
-
-        .comparison-card.kafka:hover {
-            border-color: #e55039;
-            box-shadow: 0 10px 30px rgba(229, 80, 57, 0.2);
-        }
-
-        .comparison-card.azure:hover {
-            border-color: #00a8ff;
-            box-shadow: 0 10px 30px rgba(0, 168, 255, 0.2);
-        }
-
-        /* Metrics */
-        .metric-card {
-            background: rgba(255, 255, 255, 0.02);
-            padding: 2rem;
-            border-radius: 16px;
-            text-align: center;
-            border: 1px solid var(--glass-border);
-        }
-
-        .metric-value {
-            font-size: 3.5rem;
-            font-weight: 800;
-            color: var(--neon-cyan);
-            margin-bottom: 0.5rem;
-            font-family: 'Space Grotesk', sans-serif;
-        }
-
-        @keyframes shine {
-            to {
-                background-position: 200% center;
-            }
-        }
-
-        .stagger-item {
-            opacity: 0;
-            transform: translateY(30px);
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unit 3 Catch of a Lifetime — Reading to Write</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,600;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    h1, h2, h3, .serif-font { font-family: 'Crimson Pro', Georgia, serif; }
+    .slide { display: none; }
+    .slide.active { display: flex; }
+  </style>
 </head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between select-none">
 
-<body>
+  <!-- Top Global Bar -->
+  <header class="w-full px-8 py-4 bg-slate-950/80 border-b border-slate-800 flex justify-between items-center text-xs tracking-wider uppercase text-slate-400">
+    <div class="flex items-center space-x-2">
+      <span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
+      <span class="font-semibold text-slate-200">Senior High School English</span>
+      <span>|</span>
+      <span>Unit 3 Catch of a Lifetime — Reading to Write</span>
+    </div>
+    <div id="slideCounter" class="font-mono text-amber-400 font-bold text-sm">Slide 1 / 13</div>
+  </header>
 
-    <div id="presentation-container">
+  <!-- Slide Canvas Container -->
+  <main class="flex-1 flex items-center justify-center p-6 md:p-12 overflow-hidden">
 
-        <!-- Slide 1: Titre -->
-        <div class="slide active" id="slide-1">
-            <div class="glass-panel stagger-container">
-                <div class="tag stagger-item"
-                    style="color: var(--neon-cyan); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 1rem; text-align: center;">
-                    Projet BIG DATA</div>
-                <h1 class="title-massive stagger-item">Streaming Météo <br><span class="gradient-text">En Temps
-                        Réel</span></h1>
-                <p class="subtitle stagger-item" style="margin-bottom: 3rem;">Architecture de Pipelines de Données avec
-                    Kafka & Azure</p>
-                <div class="stagger-item" style="display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap;">
-                    <div
-                        style="text-align: center; background: rgba(255,255,255,0.03); padding: 1.5rem 3rem; border-radius: 50px; border: 1px solid var(--glass-border);">
-                        <span
-                            style="color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px;">Auteur</span>
-                        <h3 style="color: white; margin-top: 0.5rem; font-size: 1.8rem;">Hicham El Alaoui</h3>
-                    </div>
-                    <div
-                        style="text-align: center; background: rgba(255,255,255,0.03); padding: 1.5rem 3rem; border-radius: 50px; border: 1px solid var(--glass-border);">
-                        <span
-                            style="color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px;">Encadrant</span>
-                        <h3 style="color: white; margin-top: 0.5rem; font-size: 1.8rem;">Abdelaziz Elmouden</h3>
-                    </div>
-                </div>
-            </div>
+    <!-- SLIDE 1: TITLE SLIDE -->
+    <section class="slide active flex-col items-center justify-center text-center max-w-4xl mx-auto w-full">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-950/70 border border-sky-600/40 text-sky-400 text-xs font-semibold uppercase tracking-widest mb-6">
+        Instructional Design Presentation
+      </div>
+      <h1 class="text-4xl md:text-6xl font-bold text-white tracking-tight leading-tight mb-4">
+        Unit 3 <span class="text-sky-400 italic">Catch of a Lifetime</span>
+      </h1>
+      <p class="text-2xl md:text-3xl text-amber-400 font-medium serif-font italic mb-4">
+        — Reading to Write: Begin with the End in Mind —
+      </p>
+      <p class="text-slate-400 text-base max-w-2xl mb-8">
+        An AI-Empowered Narrative Writing Workshop Grounded in the English Learning Activities View
+      </p>
+
+      <!-- Visual Placeholder Box -->
+      <div class="w-48 h-32 border-2 border-dashed border-slate-700 rounded-xl bg-slate-800/40 flex flex-col items-center justify-center p-4 mb-8">
+        <span class="text-3xl mb-1">🎣</span>
+        <span class="text-xs text-slate-400 font-mono text-center">[🖼️ Placeholder: Minimalist Fishing Rod Icon]</span>
+      </div>
+
+      <div class="text-sm text-slate-400">
+        <span class="text-slate-200 font-semibold">Presenter:</span> [Your Name] &nbsp;•&nbsp;
+        <span class="text-slate-200 font-semibold">Focus:</span> Backward Design & Core Competencies
+      </div>
+    </section>
+
+    <!-- SLIDE 2: THEORETICAL BASIS -->
+    <section class="slide flex-col max-w-5xl w-full">
+      <div class="border-b border-slate-800 pb-3 mb-6">
+        <span class="text-sky-400 text-xs font-bold uppercase tracking-wider">Theoretical Foundations</span>
+        <h2 class="text-3xl font-bold text-white serif-font">Pedagogical Framework & Curriculum Alignment</h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="p-5 rounded-lg bg-slate-800/60 border border-slate-700/80">
+          <div class="text-amber-400 font-semibold text-lg mb-1 flex items-center gap-2">
+            <span>🎯</span> Backward Design (UbD)
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Derived from Wiggins & McTighe. <strong>Begin with the end in mind</strong>: Identify desired writing outcomes first, determine acceptable evidence of capability, and plan reading scaffolds accordingly.
+          </p>
+        </div>
+        <div class="p-5 rounded-lg bg-slate-800/60 border border-slate-700/80">
+          <div class="text-sky-400 font-semibold text-lg mb-1 flex items-center gap-2">
+            <span>📈</span> English Learning Activities View
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Progression from <em>Learning & Understanding</em> (textual deconstruction) $\rightarrow$ <em>Applying & Practicing</em> (story map transformation) $\rightarrow$ <em>Transferring & Creating</em> (original narrative creation).
+          </p>
+        </div>
+        <div class="p-5 rounded-lg bg-slate-800/60 border border-slate-700/80">
+          <div class="text-emerald-400 font-semibold text-lg mb-1 flex items-center gap-2">
+            <span>🌟</span> Four Core Competencies
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Holistic integration of <strong>Language Ability</strong> (5W1H vocabulary), <strong>Thinking Quality</strong> (inferring tacit intentions), <strong>Cultural Awareness</strong> (family ethics), and <strong>Learning Ability</strong>.
+          </p>
+        </div>
+        <div class="p-5 rounded-lg bg-slate-800/60 border border-slate-700/80">
+          <div class="text-purple-400 font-semibold text-lg mb-1 flex items-center gap-2">
+            <span>🤖</span> Teaching-Assessment & AI Integration
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Closed-loop evaluation: Generative AI (Jimeng AI) activates emotional schemata, while intelligent diagnostic tools (Qianwen App) offer instant formative evaluation and data-driven remediation.
+          </p>
+        </div>
+      </div>
+      <!-- Placeholder notice -->
+      <div class="mt-4 p-2.5 rounded border border-dashed border-slate-700 bg-slate-800/30 text-center text-xs text-slate-400 font-mono">
+        [🖼️ Diagram Placeholder: Four Core Competencies interlinked with Three-Level Activities Pyramid]
+      </div>
+    </section>
+
+    <!-- SLIDE 3: BACKWARD DESIGN FLOW -->
+    <section class="slide flex-col max-w-5xl w-full">
+      <div class="border-b border-slate-800 pb-3 mb-6">
+        <span class="text-sky-400 text-xs font-bold uppercase tracking-wider">Curricular Pipeline</span>
+        <h2 class="text-3xl font-bold text-white serif-font">The Backward Design Architecture</h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch my-auto">
+        <div class="p-6 rounded-xl bg-gradient-to-b from-sky-950/40 to-slate-900 border border-sky-700/50 flex flex-col justify-between">
+          <div>
+            <div class="text-xs text-sky-400 font-mono uppercase mb-2">Stage 1: Desired Outcome</div>
+            <h3 class="text-xl font-bold text-white mb-3">The Target (Output)</h3>
+            <p class="text-xs text-slate-300 leading-relaxed mb-4">
+              Students write a cohesive narrative about an <strong>unforgettable family moment</strong>, demonstrating vivid conflict and reflecting a meaningful family value.
+            </p>
+          </div>
+          <div class="text-sky-400 text-xs font-bold tracking-wide">END IN MIND 🎯</div>
         </div>
 
-        <!-- Slide 2: Problématique -->
-        <div class="slide" id="slide-problematique">
-            <div class="glass-panel stagger-container">
-                <h2 class="gradient-text stagger-item"
-                    style="font-size: 3rem; margin-bottom: 2rem; text-align: center;">Problématique</h2>
-                <div class="stagger-item" style="max-width: 900px; margin: 0 auto; text-align: center;">
-                    <p style="color: var(--text-main); font-size: 1.3rem; line-height: 1.6; margin-bottom: 2rem;">
-                        Aujourd'hui, nous faisons face à un <strong>volume massif de données météorologiques</strong> qui évolue constamment. Les approches traditionnelles (batch) sont insuffisantes face à deux défis majeurs :
-                    </p>
-                </div>
-                <div class="grid-2 stagger-item" style="gap: 2rem; margin-bottom: 2rem;">
-                    <div style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 16px; border-left: 4px solid #e55039;">
-                        <h3 style="color: white; font-size: 1.5rem; margin-bottom: 1rem;"><i class="fa-solid fa-clock" style="color: #e55039;"></i> La Latence</h3>
-                        <p style="color: var(--text-muted); line-height: 1.5;">Le retard dans l'analyse de données météorologiques critiques peut avoir des conséquences graves pour la logistique et l'anticipation des risques.</p>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 16px; border-left: 4px solid var(--neon-purple);">
-                        <h3 style="color: white; font-size: 1.5rem; margin-bottom: 1rem;"><i class="fa-solid fa-chart-line" style="color: var(--neon-purple);"></i> Le Passage à l'Échelle</h3>
-                        <p style="color: var(--text-muted); line-height: 1.5;">Comment garantir qu'un système reste performant lorsque le flux passe de centaines à des millions de requêtes par seconde ?</p>
-                    </div>
-                </div>
-                <div class="stagger-item" style="text-align: center; background: rgba(0, 240, 255, 0.1); padding: 1.5rem; border-radius: 16px; border: 1px dashed var(--neon-cyan);">
-                    <p style="color: var(--neon-cyan); font-size: 1.2rem; font-weight: bold;">L'enjeu : Mettre en place un pipeline de données "Temps Réel" robuste, capable d'ingérer, traiter et visualiser l'information sans interruption.</p>
-                </div>
-            </div>
+        <div class="p-6 rounded-xl bg-gradient-to-b from-amber-950/40 to-slate-900 border border-amber-700/50 flex flex-col justify-between">
+          <div>
+            <div class="text-xs text-amber-400 font-mono uppercase mb-2">Stage 2: Pedagogical Bridge</div>
+            <h3 class="text-xl font-bold text-white mb-3">The Input (Path)</h3>
+            <p class="text-xs text-slate-300 leading-relaxed mb-4">
+              Close reading of <em>Catch of a Lifetime</em>. Dissecting the <strong>5W1H narrative matrix</strong>, tension curves, and the father’s moral principle via the "Fishing Rod" metaphor.
+            </p>
+          </div>
+          <div class="text-amber-400 text-xs font-bold tracking-wide">METHODOLOGICAL SCAFFOLD 🪝</div>
         </div>
 
-        <!-- Slide 3: Missions & Objectifs -->
-        <div class="slide" id="slide-3">
-            <div class="glass-panel stagger-container">
-                <h2 class="gradient-text stagger-item"
-                    style="font-size: 3rem; margin-bottom: 2rem; text-align: center;">Missions & Objectifs</h2>
-                <ul class="mission-list">
-                    <li class="mission-item stagger-item">
-                        <i class="fa-solid fa-network-wired mission-icon"></i>
-                        <div><strong style="color:white; font-size: 1.2rem;">Conception d'Architecture</strong> :
-                            Déployer une architecture scalable pour le streaming de données.</div>
-                    </li>
-                    <li class="mission-item stagger-item" style="border-left-color: #e55039;">
-                        <i class="fa-solid fa-bolt mission-icon" style="color: #e55039;"></i>
-                        <div><strong style="color:white; font-size: 1.2rem;">Pipeline Kafka</strong> : Déployer un
-                            pipeline de streaming ultra-rapide et résilient.</div>
-                    </li>
-                    <li class="mission-item stagger-item" style="border-left-color: #00a8ff;">
-                        <i class="fa-brands fa-microsoft mission-icon" style="color: #00a8ff;"></i>
-                        <div><strong style="color:white; font-size: 1.2rem;">Azure Event Hubs</strong> : Intégrer les
-                            services Cloud managés pour l'élasticité.</div>
-                    </li>
-                    <li class="mission-item stagger-item" style="border-left-color: #3b82f6;">
-                        <i class="fa-solid fa-database mission-icon" style="color: #3b82f6;"></i>
-                        <div><strong style="color:white; font-size: 1.2rem;">Stockage PostgreSQL</strong> : Automatiser
-                            l'ingestion dans une base de données relationnelle.</div>
-                    </li>
-                    <li class="mission-item stagger-item" style="border-left-color: var(--neon-purple);">
-                        <i class="fa-solid fa-chart-pie mission-icon" style="color: var(--neon-purple);"></i>
-                        <div><strong style="color:white; font-size: 1.2rem;">Restitution (Insights)</strong> : Activer
-                            les tableaux de bord interactifs via Power BI & Streamlit.</div>
-                    </li>
-                </ul>
-            </div>
+        <div class="p-6 rounded-xl bg-gradient-to-b from-emerald-950/40 to-slate-900 border border-emerald-700/50 flex flex-col justify-between">
+          <div>
+            <div class="text-xs text-emerald-400 font-mono uppercase mb-2">Stage 3: Authentic Creation</div>
+            <h3 class="text-xl font-bold text-white mb-3">The Achievement (Transfer)</h3>
+            <p class="text-xs text-slate-300 leading-relaxed mb-4">
+              Autonomous production utilizing the writing template, supported by AI real-time diagnostic assessment and teacher-led qualitative appraisal.
+            </p>
+          </div>
+          <div class="text-emerald-400 text-xs font-bold tracking-wide">TRANSFER & CREATION 🐟</div>
+        </div>
+      </div>
+      <div class="mt-6 text-center text-xs text-slate-400 font-mono">
+        Pipeline: Output Specification &rarr; Targeted Input Analysis &rarr; Formative Transfer
+      </div>
+    </section>
+
+    <!-- SLIDE 4: MATERIAL & STUDENT ANALYSIS -->
+    <section class="slide flex-col max-w-5xl w-full">
+      <div class="border-b border-slate-800 pb-3 mb-6">
+        <span class="text-sky-400 text-xs font-bold uppercase tracking-wider">Contextual Diagnostics</span>
+        <h2 class="text-3xl font-bold text-white serif-font">Material & Learner Analysis</h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="p-6 rounded-xl bg-slate-800/50 border border-slate-700">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-lg font-bold text-sky-400">Material Analysis (The Text)</h3>
+            <span class="text-xs font-mono bg-sky-950 text-sky-300 px-2 py-0.5 rounded border border-sky-800">Man & Society</span>
+          </div>
+          <ul class="text-xs text-slate-300 space-y-2.5">
+            <li><strong class="text-white">• Thematic Theme:</strong> Family traditions, moral integrity, and parental guidance.</li>
+            <li><strong class="text-white">• Core Plot:</strong> Jim catches a trophy bass out of season; his father quietly insists he return it to the water, embedding a lifelong moral anchor.</li>
+            <li><strong class="text-white">• Linguistic Style:</strong> Abundant dynamic verbs, precise spatial-temporal transitions, and rich sensory descriptions.</li>
+          </ul>
+          <div class="mt-4 p-2 rounded border border-dashed border-slate-700 bg-slate-900/50 text-center text-xs text-slate-400 font-mono">
+            [🖼️ Placeholder: Textbook Unit Cover & Highlighted Paragraphs]
+          </div>
         </div>
 
-        <!-- Slide 3: Architecture de Bout en Bout -->
-        <div class="slide" id="slide-3">
-            <div class="glass-panel stagger-container">
-                <h2 class="gradient-text stagger-item" style="font-size: 3rem; margin-bottom: 1.5rem;">Architecture de
-                    Bout en Bout</h2>
-                <div class="grid-2">
-                    <div class="stagger-item blueprint-frame">
-                        <img src="arch_blueprint.jpg" alt="Architecture Diagram"
-                            style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;">
-                    </div>
-                    <div class="stagger-item">
-                        <h3 style="color: white; font-size: 1.8rem; margin-bottom: 1rem;">Motif "Lambda" (Big Data)</h3>
-                        <p
-                            style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.6; margin-bottom: 1.5rem;">
-                            Notre conception repose sur une séparation claire des responsabilités :
-                        </p>
-                        <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 1rem;">
-                            <li style="color: white;"><strong style="color: var(--neon-cyan);">1. Ingestion :</strong>
-                                Scripts Python collectant la donnée brute.</li>
-                            <li style="color: white;"><strong style="color: var(--neon-purple);">2. Broker (Courtier)
-                                    :</strong> Distribution asynchrone haut débit (Kafka/Azure).</li>
-                            <li style="color: white;"><strong style="color: #3b82f6);">3. Destination (Sink) :</strong>
-                                Stockage structuré pour l'analyse décisionnelle.</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
+        <div class="p-6 rounded-xl bg-slate-800/50 border border-slate-700">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-lg font-bold text-amber-400">Student Profile (Grade 10/11)</h3>
+            <span class="text-xs font-mono bg-amber-950 text-amber-300 px-2 py-0.5 rounded border border-amber-800">Learner State</span>
+          </div>
+          <ul class="text-xs text-slate-300 space-y-2.5">
+            <li><strong class="text-white">• Cognitive Foundation:</strong> Familiar with past-tense narrative writing; basic grasp of chronological organization.</li>
+            <li><strong class="text-white">• Learning Gap:</strong> Tends to write superficial recounts without psychological depth or dramatic tension ("events without soul").</li>
+            <li><strong class="text-white">• Pedagogical Need:</strong> Requires explicit visual scaffolds (Fishing Rod Board) and structured prompts to extract deeper moral significance.</li>
+          </ul>
+          <div class="mt-4 p-2 rounded bg-amber-950/20 border border-amber-800/40 text-xs text-amber-300 text-center">
+            Key Remediation: Transition from <em>"What happened"</em> to <em>"What it meant to me"</em>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 5: TEACHING OBJECTIVES -->
+    <section class="slide flex-col max-w-5xl w-full">
+      <div class="border-b border-slate-800 pb-3 mb-6">
+        <span class="text-sky-400 text-xs font-bold uppercase tracking-wider">Intended Learning Outcomes</span>
+        <h2 class="text-3xl font-bold text-white serif-font">Teaching Objectives & Core Foci</h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div class="p-4 rounded-lg bg-slate-800/60 border-l-4 border-sky-500">
+          <div class="text-white font-bold text-sm mb-1">1. Language Ability</div>
+          <p class="text-xs text-slate-300">Master narrative action verbs and descriptive adverbs; utilize the 5W1H structure to construct a well-paced story.</p>
+        </div>
+        <div class="p-4 rounded-lg bg-slate-800/60 border-l-4 border-amber-500">
+          <div class="text-white font-bold text-sm mb-1">2. Thinking Quality</div>
+          <p class="text-xs text-slate-300">Infer the father’s unstated motives; critically interpret "personal integrity" when nobody is watching.</p>
+        </div>
+        <div class="p-4 rounded-lg bg-slate-800/60 border-l-4 border-emerald-500">
+          <div class="text-white font-bold text-sm mb-1">3. Cultural Awareness</div>
+          <p class="text-xs text-slate-300">Recognize how family rituals and parental principles serve as moral compasses across diverse cultural settings.</p>
+        </div>
+        <div class="p-4 rounded-lg bg-slate-800/60 border-l-4 border-purple-500">
+          <div class="text-white font-bold text-sm mb-1">4. Learning Ability</div>
+          <p class="text-xs text-slate-300">Apply the visual Story Map to self-monitor narrative planning and embrace AI-assisted reflective revision.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="p-3 bg-sky-950/40 border border-sky-800/60 rounded text-xs">
+          <span class="font-bold text-sky-400 uppercase font-mono">Teaching Key Point:</span>
+          <span class="text-slate-200 ml-1">Deconstructing the story structure via 5W1H and extracting the underlying ethical value.</span>
+        </div>
+        <div class="p-3 bg-amber-950/40 border border-amber-800/60 rounded text-xs">
+          <span class="font-bold text-amber-400 uppercase font-mono">Teaching Difficult Point:</span>
+          <span class="text-slate-200 ml-1">Guiding students to elevate everyday personal experiences into enduring family principles.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 6: TEACHING HIGHLIGHTS -->
+    <section class="slide flex-col max-w-5xl w-full">
+      <div class="border-b border-slate-800 pb-3 mb-6">
+        <span class="text-sky-400 text-xs font-bold uppercase tracking-wider">Methodological Innovation</span>
+        <h2 class="text-3xl font-bold text-white serif-font">Teaching Highlights & Strategic Scaffolds</h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="p-5 rounded-xl bg-slate-800/50 border border-slate-700 flex flex-col items-center text-center">
+          <div class="w-12 h-12 rounded-full bg-purple-900/60 border border-purple-500 text-purple-300 flex items-center justify-center text-xl mb-4">
+            ✨
+          </div>
+          <h3 class="text-base font-bold text-white mb-2">AI Story Cards</h3>
+          <p class="text-xs text-slate-300 leading-relaxed mb-4">
+            Utilizing <strong>Jimeng AI</strong> to generate living animated GIFs from static family photographs, stimulating episodic memory and emotional immersion.
+          </p>
+          <div class="mt-auto text-xs text-purple-400 font-mono">[Tech: Dynamic Video/GIF]</div>
         </div>
 
-        <!-- Slide 4: Le Producteur Python (Ingestion) -->
-        <div class="slide" id="slide-4">
-            <div class="glass-panel stagger-container">
-                <h2 class="gradient-text stagger-item" style="font-size: 3rem; margin-bottom: 1.5rem;">Le Producteur
-                    Python</h2>
-                <div class="grid-2">
-                    <div class="stagger-item">
-                        <h3 style="color: white; font-size: 1.8rem; margin-bottom: 1rem;">Ingestion Continue des Données
-                        </h3>
-                        <p
-                            style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.6; margin-bottom: 1.5rem;">
-                            Un script robuste interrogeant de manière asynchrone l'API <strong>OpenWeatherMap</strong>
-                            toutes les 10 secondes.
-                        </p>
-                        <div style="background: rgba(255, 255, 255, 0.05); padding: 1.5rem; border-radius: 12px;">
-                            <strong style="color: white;">Processus de Sérialisation :</strong><br>
-                            <span style="color: var(--text-muted);">Les données (Température, Humidité, Vitesse du Vent)
-                                sont extraites, formatées en JSON, et poussées vers le topic Kafka de manière
-                                atomique.</span>
-                        </div>
-                    </div>
-                    <div class="stagger-item">
-                        <div class="mockup-frame tilt-effect">
-                            <div class="mockup-header">
-                                <div class="mockup-dot r"></div>
-                                <div class="mockup-dot y"></div>
-                                <div class="mockup-dot g"></div>
-                                <span style="color: #888; font-size: 0.8rem; margin-left: auto;">producer.py - VS
-                                    Code</span>
-                            </div>
-                            <div class="ide-content">
-                                <pre><code class="language-python">import json
-import time
-import requests
-from kafka import KafkaProducer
+        <div class="p-5 rounded-xl bg-slate-800/50 border border-slate-700 flex flex-col items-center text-center">
+          <div class="w-12 h-12 rounded-full bg-sky-900/60 border border-sky-500 text-sky-300 flex items-center justify-center text-xl mb-4">
+            🎣
+          </div>
+          <h3 class="text-base font-bold text-white mb-2">Fishing Rod Board</h3>
+          <p class="text-xs text-slate-300 leading-relaxed mb-4">
+            An original visual metaphor mapping Hook (Exposition), Line (Rising Action), Reel (Climax), and Fish (Moral Reflection) directly onto the blackboard.
+          </p>
+          <div class="mt-auto text-xs text-sky-400 font-mono">[Visual Scaffolding]</div>
+        </div>
 
-def fetch_weather(city="Paris"):
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid=API_KEY"
-    res = requests.get(url).json()
-    return {
-        "city": city,
-        "temperature": res["main"]["temp"],
-        "humidity": res["main"]["humidity"],
-        "wind_speed": res["wind"]["speed"]
+        <div class="p-5 rounded-xl bg-slate-800/50 border border-slate-700 flex flex-col items-center text-center">
+          <div class="w-12 h-12 rounded-full bg-emerald-900/60 border border-emerald-500 text-emerald-300 flex items-center justify-center text-xl mb-4">
+            📝
+          </div>
+          <h3 class="text-base font-bold text-white mb-2">5W1H Writing Matrix</h3>
+          <p class="text-xs text-slate-300 leading-relaxed mb-4">
+            A structured sentence-starter blueprint linked directly to the Qianwen App for real-time diagnostic evaluation and instant feedback.
+          </p>
+          <div class="mt-auto text-xs text-emerald-400 font-mono">[Genre Writing Framework]</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 7: STEP 1: PRE-CLASS & LEAD-IN -->
+    <section class="slide flex-col max-w-5xl w-full">
+      <div class="border-b border-slate-800 pb-3 mb-6 flex justify-between items-end">
+        <div>
+          <span class="text-sky-400 text-xs font-bold uppercase tracking-wider">Instructional Procedure</span>
+          <h2 class="text-3xl font-bold text-white serif-font">Step 1: Pre-class & Lead-in — Reanimating Memories</h2>
+        </div>
+        <span class="text-xs font-mono text-slate-400">Duration: 5 Mins</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-3">
+            <div class="h-36 rounded-lg border-2 border-dashed border-slate-700 bg-slate-800/50 flex flex-col items-center justify-center p-2 text-center">
+              <span class="text-2xl mb-1">📷</span>
+              <span class="text-xs font-mono text-slate-400">[Static Family Photo]</span>
+              <span class="text-[10px] text-slate-500">Unspoken, Frozen</span>
+            </div>
+            <div class="h-36 rounded-lg border-2 border-dashed border-sky-600 bg-sky-950/30 flex flex-col items-center justify-center p-2 text-center">
+              <span class="text-2xl mb-1">🎞️</span>
+              <span class="text-xs font-mono text-sky-400">[AI-Animated GIF]</span>
+              <span class="text-[10px] text-sky-300">Jimeng AI Generation</span>
+            </div>
+          </div>
+          <div class="p-3 bg-slate-800/80 rounded-lg border border-slate-700 text-xs text-slate-300 italic">
+            "Watch how the static memory begins to breathe. The gentle wave, the father's hand... what story was waiting to be told?"
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <h4 class="text-xs font-mono uppercase text-amber-400 mb-2 font-semibold">Thematic Word Bank (Lexical Scaffolding):</h4>
+            <div class="flex flex-wrap gap-2">
+              <span class="px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-xs text-slate-200 font-mono">unforgettable</span>
+              <span class="px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-xs text-slate-200 font-mono">family moment</span>
+              <span class="px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-xs text-slate-200 font-mono">tacit understanding</span>
+              <span class="px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-xs text-slate-200 font-mono">treasured advice</span>
+            </div>
+          </div>
+          <blockquote class="p-4 rounded-lg bg-sky-950/30 border-l-4 border-sky-400 text-sm text-sky-200 italic serif-font">
+            "A static photo becomes a living memory; an emotional trigger becomes an authentic narrative voice."
+          </blockquote>
+          <p class="text-[11px] text-slate-400 font-mono">
+            ⚡ <em>Classroom Action: Students click to reveal AI animation, sharing one-sentence descriptions.</em>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 8: STEP 2: WHILE-READING -->
+    <section class="slide flex-col max-w-5xl w-full">
+      <div class="border-b border-slate-800 pb-3 mb-4 flex justify-between items-end">
+        <div>
+          <span class="text-sky-400 text-xs font-bold uppercase tracking-wider">Instructional Procedure</span>
+          <h2 class="text-2xl md:text-3xl font-bold text-white serif-font">Step 2: While-reading — Deconstructing the Rod</h2>
+        </div>
+        <span class="text-xs font-mono text-slate-400">Duration: 15 Mins</span>
+      </div>
+
+      <!-- Rod Breakdown Row -->
+      <div class="grid grid-cols-4 gap-2 mb-4 text-center">
+        <div class="p-2.5 rounded bg-sky-950/40 border border-sky-800/60">
+          <div class="text-lg">🪝</div>
+          <div class="text-xs font-bold text-sky-300">Hook</div>
+          <div class="text-[11px] text-slate-400">Who + When + Where</div>
+        </div>
+        <div class="p-2.5 rounded bg-slate-800 border border-slate-700">
+          <div class="text-lg">═══</div>
+          <div class="text-xs font-bold text-slate-200">Line</div>
+          <div class="text-[11px] text-slate-400">What Happened</div>
+        </div>
+        <div class="p-2.5 rounded bg-amber-950/40 border border-amber-800/60">
+          <div class="text-lg">🔄</div>
+          <div class="text-xs font-bold text-amber-300">Reel</div>
+          <div class="text-[11px] text-slate-400">Why + How (Conflict)</div>
+        </div>
+        <div class="p-2.5 rounded bg-emerald-950/40 border border-emerald-800/60">
+          <div class="text-lg">🐟</div>
+          <div class="text-xs font-bold text-emerald-300">Fish</div>
+          <div class="text-[11px] text-slate-400">Moral Value / Catch</div>
+        </div>
+      </div>
+
+      <!-- Comparative Table -->
+      <div class="overflow-hidden rounded-lg border border-slate-700 bg-slate-900 text-xs">
+        <table class="w-full text-left">
+          <thead class="bg-slate-800 text-slate-300 uppercase font-mono text-[10px]">
+            <tr>
+              <th class="p-2.5">Component</th>
+              <th class="p-2.5">Textual Exemplar: <em>Catch of a Lifetime</em></th>
+              <th class="p-2.5">Student Writing Transfer: <em>My Moment</em></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800 text-slate-300">
+            <tr>
+              <td class="p-2.5 font-bold text-sky-400">🪝 The Hook</td>
+              <td class="p-2.5">Jim & Father; 10 PM; quiet lake under moonlight</td>
+              <td class="p-2.5 text-slate-400 italic">Me & Grandfather; winter morning; carpentry shed</td>
+            </tr>
+            <tr>
+              <td class="p-2.5 font-bold text-slate-200">══ The Line</td>
+              <td class="p-2.5">Reeling in an immense, legendary bass out of season</td>
+              <td class="p-2.5 text-slate-400 italic">Attempting to carve a wooden gift; making a severe mistake</td>
+            </tr>
+            <tr>
+              <td class="p-2.5 font-bold text-amber-400">🔄 The Reel</td>
+              <td class="p-2.5">Father lights a match, looks at watch: "Put it back, son."</td>
+              <td class="p-2.5 text-slate-400 italic">Grandfather notices flaw; calmly teaches patience over haste</td>
+            </tr>
+            <tr>
+              <td class="p-2.5 font-bold text-emerald-400">🐟 The Fish</td>
+              <td class="p-2.5">Integrity: Doing right even when no one is watching</td>
+              <td class="p-2.5 text-slate-400 italic">Honesty of craft: Perfection requires humble persistence</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SLIDE 9: STEP 3: POST-READING -->
+    <section class="slide flex-col max-w-5xl w-full">
+      <div class="border-b border-slate-800 pb-3 mb-4 flex justify-between items-end">
+        <div>
+          <span class="text-sky-400 text-xs font-bold uppercase tracking-wider">Instructional Procedure</span>
+          <h2 class="text-2xl md:text-3xl font-bold text-white serif-font">Step 3: Post-reading — Scaffolded Writing Transfer</h2>
+        </div>
+        <span class="text-xs font-mono text-slate-400">Duration: 15 Mins</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="md:col-span-2 space-y-3">
+          <div class="p-3 bg-slate-800/80 rounded-lg border border-slate-700">
+            <span class="text-sky-400 font-mono text-xs font-bold uppercase block mb-1">Sentence Starter 1 (Hook - Setting)</span>
+            <p class="text-xs text-slate-200 font-serif italic">
+              "It was a <span class="text-sky-300 underline underline-offset-2">[crisp autumn / stormy]</span> day. I was with <span class="text-sky-300 underline underline-offset-2">[my father / mother]</span> at <span class="text-sky-300 underline underline-offset-2">[the quiet lakeside / our workshop]</span>..."
+            </p>
+          </div>
+
+          <div class="p-3 bg-slate-800/80 rounded-lg border border-slate-700">
+            <span class="text-amber-400 font-mono text-xs font-bold uppercase block mb-1">Sentence Starter 2 (Line & Reel - Conflict)</span>
+            <p class="text-xs text-slate-200 font-serif italic">
+              "Suddenly, <span class="text-amber-300 underline underline-offset-2">[the unexpected occurred]</span>. I felt a surge of <span class="text-amber-300 underline underline-offset-2">[excitement / conflict]</span> because <span class="text-amber-300 underline underline-offset-2">[I wanted to keep it, yet rules forbade it]</span>..."
+            </p>
+          </div>
+
+          <div class="p-3 bg-slate-800/80 rounded-lg border border-slate-700">
+            <span class="text-emerald-400 font-mono text-xs font-bold uppercase block mb-1">Sentence Starter 3 (Fish - Reflection)</span>
+            <p class="text-xs text-slate-200 font-serif italic">
+              "From this experience, I learned that <span class="text-emerald-300 underline underline-offset-2">[true character is revealed in quiet choices]</span>. That moment became the true catch of my life."
+            </p>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-lg bg-slate-900 border border-slate-800 flex flex-col justify-between">
+          <div>
+            <span class="text-xs font-mono text-slate-400 uppercase block mb-2 font-semibold">Live Drafting Space</span>
+            <div class="h-44 border-2 border-dashed border-slate-700 rounded bg-slate-950/60 flex flex-col items-center justify-center p-3 text-center">
+              <span class="text-xl mb-1">✍️</span>
+              <span class="text-xs text-slate-400 font-mono">[🖼️ Placeholder: Student Draft with Guided Sticky Annotations]</span>
+            </div>
+          </div>
+          <div class="text-[11px] text-slate-400 mt-2">
+            Target Output: 80–100 words in 10 minutes.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 10: STEP 4: ASSESSMENT -->
+    <section class="slide flex-col max-w-5xl w-full">
+      <div class="border-b border-slate-800 pb-3 mb-4 flex justify-between items-end">
+        <div>
+          <span class="text-sky-400 text-xs font-bold uppercase tracking-wider">Instructional Procedure</span>
+          <h2 class="text-2xl md:text-3xl font-bold text-white serif-font">Step 4: Assessment — AI Diagnostic Feedback</h2>
+        </div>
+        <span class="text-xs font-mono text-slate-400">Duration: 8 Mins</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+        <!-- AI Screen Placeholder -->
+        <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 shadow-2xl space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span class="text-xs font-mono text-emerald-400">Qianwen App (Homework Mode)</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">Instant OCR Scan</span>
+          </div>
+
+          <div class="h-44 border-2 border-dashed border-slate-700 rounded bg-slate-900/60 flex flex-col items-center justify-center p-4 text-center">
+            <span class="text-2xl mb-1">📱</span>
+            <span class="text-xs font-mono text-slate-300">[🖼️ Placeholder: Qianwen App Screenshot]</span>
+            <span class="text-[10px] text-slate-400 mt-1">Showing OCR text, green checkmarks (5W1H), orange suggestion tags (lexical variety)</span>
+          </div>
+
+          <div class="flex justify-between text-[11px] font-mono text-slate-400">
+            <span>Coherence: 92%</span>
+            <span>5W1H Alignment: Complete</span>
+            <span>Value Depth: High</span>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <div class="p-4 rounded-lg bg-slate-800/60 border border-slate-700">
+            <h4 class="text-sm font-bold text-white mb-2">Teaching-Learning-Assessment Cycle</h4>
+            <ul class="text-xs text-slate-300 space-y-2">
+              <li><strong class="text-sky-400">1. Instant Data Capture:</strong> Whole-class submission scanned within 90 seconds.</li>
+              <li><strong class="text-amber-400">2. Real-Time Diagnostics:</strong> Dashboard exposes common grammatical slips and theme deviations.</li>
+              <li><strong class="text-emerald-400">3. Teacher-Led Elevation:</strong> Teacher focuses exclusively on psychological nuance and emotional resonance.</li>
+            </ul>
+          </div>
+          <blockquote class="p-3 bg-amber-950/20 border-l-4 border-amber-500 text-xs text-amber-200 italic serif-font">
+            "AI provides instantaneous objective metrics; the teacher imparts warmth, empathy, and moral depth."
+          </blockquote>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 11: BLACKBOARD DESIGN -->
+    <section class="slide flex-col max-w-5xl w-full">
+      <div class="border-b border-slate-800 pb-3 mb-4">
+        <span class="text-sky-400 text-xs font-bold uppercase tracking-wider">Instructional Artifact</span>
+        <h2 class="text-3xl font-bold text-white serif-font">Blackboard Architecture (板书设计)</h2>
+      </div>
+
+      <!-- Blackboard Simulation Box -->
+      <div class="p-6 rounded-xl bg-emerald-950/80 border-4 border-emerald-900 shadow-2xl text-slate-100 font-mono text-xs">
+        <div class="text-center font-bold text-sm tracking-wider text-emerald-200 border-b border-emerald-800 pb-2 mb-4">
+          Unit 3 Catch of a Lifetime — Reading to Write
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-center mb-4">
+          <div class="p-2 border border-emerald-700 rounded bg-emerald-900/40">
+            <span class="text-amber-300 font-bold block">🪝 HOOK</span>
+            <span class="text-[10px] text-emerald-200">Who: Jim & Father<br>When: 10 PM<br>Where: Lake</span>
+          </div>
+          <div class="p-2 border border-emerald-700 rounded bg-emerald-900/40">
+            <span class="text-amber-300 font-bold block">══ LINE</span>
+            <span class="text-[10px] text-emerald-200">What: Reeling in trophy bass<br>Action: Struggle & Triumph</span>
+          </div>
+          <div class="p-2 border border-emerald-700 rounded bg-emerald-900/40">
+            <span class="text-amber-300 font-bold block">🔄 REEL</span>
+            <span class="text-[10px] text-emerald-200">Why & How: Season opens in 2 hrs<br>Father: "Put it back."</span>
+          </div>
+          <div class="p-2 border border-emerald-700 rounded bg-emerald-900/40">
+            <span class="text-amber-300 font-bold block">🐟 FISH</span>
+            <span class="text-[10px] text-emerald-200">The Real Catch: Integrity<br>Ethics when unseen</span>
+          </div>
+        </div>
+
+        <div class="border-t border-emerald-800 pt-3 flex justify-between items-center text-[11px] text-emerald-300">
+          <span>Writing Framework: Hook &rarr; Line &rarr; Reel &rarr; Fish</span>
+          <span class="italic serif-font text-amber-200 text-sm">"Reading is the rod, writing is the fish."</span>
+        </div>
+      </div>
+
+      <div class="mt-3 text-center text-xs text-slate-400 font-mono">
+        [🖼️ Placeholder: Photo of Actual Chalkboard with Student Sticky Notes attached under 'Fish']
+      </div>
+    </section>
+
+    <!-- SLIDE 12: CONCLUSION -->
+    <section class="slide flex-col max-w-5xl w-full">
+      <div class="border-b border-slate-800 pb-3 mb-6">
+        <span class="text-sky-400 text-xs font-bold uppercase tracking-wider">Pedagogical Synthesis</span>
+        <h2 class="text-3xl font-bold text-white serif-font">Conclusion: The Triad of Modern Pedagogy</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+        <div class="p-5 rounded-xl bg-slate-800/60 border border-slate-700 text-center">
+          <div class="text-2xl mb-2">🎯</div>
+          <h3 class="text-sm font-bold text-white mb-2">Backward Design</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Writing is the end; reading is the inductive vehicle. Clarity of target produces efficiency in text analysis.
+          </p>
+        </div>
+
+        <div class="p-5 rounded-xl bg-slate-800/60 border border-slate-700 text-center">
+          <div class="text-2xl mb-2">🤖</div>
+          <h3 class="text-sm font-bold text-white mb-2">Symbiotic AI</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            AI revives frozen memory and diagnoses mechanical accuracy, allowing human teachers to focus on emotional transformation.
+          </p>
+        </div>
+
+        <div class="p-5 rounded-xl bg-slate-800/60 border border-slate-700 text-center">
+          <div class="text-2xl mb-2">🌿</div>
+          <h3 class="text-sm font-bold text-white mb-2">Moral Formation</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Narrative writing is not just syntactic drill; it is the celebration of values passed from generation to generation.
+          </p>
+        </div>
+      </div>
+
+      <div class="p-4 rounded-xl bg-sky-950/40 border border-sky-800 text-center">
+        <blockquote class="text-lg md:text-xl text-sky-200 serif-font italic">
+          "It is not just about a fish. It is about how family traditions and quiet decisions shape our character for a lifetime."
+        </blockquote>
+      </div>
+    </section>
+
+    <!-- SLIDE 13: THANK YOU -->
+    <section class="slide flex-col items-center justify-center text-center max-w-4xl mx-auto w-full">
+      <div class="w-16 h-16 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-3xl mb-6 text-sky-400">
+        🐟
+      </div>
+      <h1 class="text-5xl font-bold text-white mb-4 serif-font">Thank You!</h1>
+      <p class="text-xl text-amber-400 italic serif-font mb-6">
+        "Reading is the rod, writing is the fish."
+      </p>
+      <p class="text-xs text-slate-400 max-w-md mx-auto mb-8 font-mono">
+        Begin with the End in Mind &bull; Unit 3 Catch of a Lifetime &bull; Senior High English Demonstration
+      </p>
+
+      <div class="p-4 rounded-lg bg-slate-800/50 border border-slate-700 text-xs text-slate-400 flex gap-6">
+        <div><strong>Email:</strong> [your.email@school.edu]</div>
+        <div><strong>Course:</strong> Senior High English Reading to Write</div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Navigation Controller -->
+  <footer class="w-full px-8 py-4 bg-slate-950/80 border-t border-slate-800 flex justify-between items-center text-xs text-slate-400">
+    <div>
+      Use <kbd class="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-slate-200 font-mono">←</kbd>
+      and <kbd class="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-slate-200 font-mono">→</kbd> keys to navigate
+    </div>
+    <div class="flex items-center space-x-3">
+      <button id="prevBtn" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 transition font-medium">Previous</button>
+      <button id="nextBtn" class="px-3 py-1.5 rounded bg-sky-600 hover:bg-sky-500 text-white transition font-medium">Next</button>
+    </div>
+  </footer>
+
+  <!-- Slide Switcher Script -->
+  <script>
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    const counter = document.getElementById('slideCounter');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+
+    function updateSlide(index) {
+      slides.forEach((s, i) => {
+        s.classList.toggle('active', i === index);
+      });
+      counter.textContent = `Slide ${index + 1} / ${totalSlides}`;
+      prevBtn.disabled = index === 0;
+      nextBtn.disabled = index === totalSlides - 1;
+      prevBtn.classList.toggle('opacity-40', index === 0);
+      nextBtn.classList.toggle('opacity-40', index === totalSlides - 1);
     }
 
-producer = KafkaProducer(
-    bootstrap_servers=['localhost:9092'],
-    value_serializer=lambda v: json.dumps(v).encode('utf-8')
-)
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlide(currentSlide);
+      }
+    }
 
-while True:
-    data = fetch_weather()
-    producer.send('weather_topic', data)
-    print(f"Sent: {data}")
-    time.sleep(10)
-</code></pre>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlide(currentSlide);
+      }
+    }
 
-        <!-- Slide 5: Intégration Kafka & Azure -->
-        <div class="slide" id="slide-5">
-            <div class="glass-panel stagger-container">
-                <h2 class="gradient-text stagger-item"
-                    style="font-size: 3rem; margin-bottom: 3rem; text-align: center;">Intégration Kafka & Azure</h2>
-                <div class="grid-2 stagger-item">
-                    <div class="comparison-card kafka">
-                        <i class="fa-solid fa-server" style="font-size: 3rem; color: #e55039; margin-bottom: 1rem;"></i>
-                        <h3 style="color: white; font-size: 1.8rem; margin-bottom: 1rem;">Apache Kafka</h3>
-                        <p style="color: var(--text-muted); line-height: 1.6;">
-                            Hébergé localement ou sur des machines virtuelles dédiées. Offre un <strong>débit
-                                ultra-élevé</strong> et un contrôle total sur l'infrastructure et la configuration des
-                            partitions.
-                        </p>
-                    </div>
-                    <div class="comparison-card azure">
-                        <i class="fa-brands fa-microsoft"
-                            style="font-size: 3rem; color: #00a8ff; margin-bottom: 1rem;"></i>
-                        <h3 style="color: white; font-size: 1.8rem; margin-bottom: 1rem;">Azure Event Hubs</h3>
-                        <p style="color: var(--text-muted); line-height: 1.6;">
-                            Service cloud entièrement géré (PaaS). Permet une <strong>scalabilité automatique</strong>
-                            (cloud scale) sans gestion de serveurs, avec une intégration native à l'écosystème Azure.
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
+    nextBtn.addEventListener('click', nextSlide);
+    prevBtn.addEventListener('click', prevSlide);
 
-        <!-- Slide 6: Stockage PostgreSQL -->
-        <div class="slide" id="slide-6">
-            <div class="glass-panel stagger-container">
-                <h2 class="gradient-text stagger-item" style="font-size: 3rem; margin-bottom: 1.5rem;">Stockage
-                    PostgreSQL</h2>
-                <div class="grid-2">
-                    <div class="stagger-item">
-                        <div class="mockup-frame tilt-effect">
-                            <div class="mockup-header">
-                                <div class="mockup-dot r"></div>
-                                <div class="mockup-dot y"></div>
-                                <div class="mockup-dot g"></div>
-                            </div>
-                            <div class="mockup-content" style="background-image: url('postgres_db.png');"></div>
-                        </div>
-                    </div>
-                    <div class="stagger-item">
-                        <h3 style="color: white; font-size: 1.8rem; margin-bottom: 1rem;">Persistance Relationnelle</h3>
-                        <p
-                            style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.6; margin-bottom: 1.5rem;">
-                            Les flux de données bruts sont consommés, validés, et structurés dans des tables
-                            relationnelles.
-                        </p>
-                        <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 1rem;">
-                            <li style="color: white; border-left: 2px solid var(--neon-cyan); padding-left: 1rem;">
-                                Intégrité transactionnelle (ACID)</li>
-                            <li style="color: white; border-left: 2px solid var(--neon-cyan); padding-left: 1rem;">
-                                Indexation temporelle pour requêtes BI rapides</li>
-                            <li style="color: white; border-left: 2px solid var(--neon-cyan); padding-left: 1rem;">
-                                Historisation complète des événements météo</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        prevSlide();
+      }
+    });
 
-        <!-- Slide 7: Business Intelligence avec Power BI -->
-        <div class="slide" id="slide-7">
-            <div class="glass-panel stagger-container">
-                <h2 class="gradient-text stagger-item" style="font-size: 3rem; margin-bottom: 1.5rem;">Business
-                    Intelligence avec Power BI</h2>
-                <div class="grid-2">
-                    <div class="stagger-item">
-                        <h3 style="color: white; font-size: 1.8rem; margin-bottom: 1rem;">Décisions Basées sur la Donnée
-                        </h3>
-                        <p
-                            style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.6; margin-bottom: 1.5rem;">
-                            La donnée stockée prend tout son sens grâce à l'analyse visuelle. Power BI permet
-                            d'identifier des tendances historiques.
-                        </p>
-                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                            <span
-                                style="background: rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 50px; color: white;">🔥
-                                Cartes de Chaleur (Humidité)</span>
-                            <span
-                                style="background: rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 50px; color: white;">📊
-                                Comparaisons Dynamiques</span>
-                            <span
-                                style="background: rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 50px; color: white;">⚠️
-                                Alertes Vent</span>
-                        </div>
-                    </div>
-                    <div class="stagger-item">
-                        <div class="mockup-frame tilt-effect" style="border: 1px solid #f2c811;">
-                            <div class="mockup-header" style="background: #333;"><span
-                                    style="color: #f2c811; font-weight: bold; font-size: 0.8rem;">Power BI Report
-                                    Viewer</span></div>
-                            <div class="mockup-content" style="background-image: url('powerbi_dashboard.png');"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Slide 8: Interface Streamlit -->
-        <div class="slide" id="slide-8">
-            <div class="glass-panel stagger-container">
-                <h2 class="gradient-text stagger-item" style="font-size: 3rem; margin-bottom: 1.5rem;">Interface
-                    Utilisateur Streamlit</h2>
-                <div class="grid-2">
-                    <div class="stagger-item">
-                        <div class="mockup-frame tilt-effect">
-                            <div class="mockup-header">
-                                <div class="mockup-dot r"></div>
-                                <div class="mockup-dot y"></div>
-                                <div class="mockup-dot g"></div>
-                                <span style="color: #888; font-size: 0.8rem; margin-left: 10px;">http://localhost:8501 -
-                                    Weather Stream</span>
-                            </div>
-                            <div class="mockup-content" style="background-image: url('streamlit_app.png');"></div>
-                        </div>
-                    </div>
-                    <div class="stagger-item">
-                        <h3 style="color: white; font-size: 1.8rem; margin-bottom: 1rem;">Légèreté & Réactivité</h3>
-                        <p
-                            style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.6; margin-bottom: 1.5rem;">
-                            Une application web moderne déployée via Streamlit pour un accès immédiat aux analyses en
-                            temps réel, sans la lourdeur d'outils BI traditionnels.
-                        </p>
-                        <p style="color: var(--neon-cyan);"><i class="fa-solid fa-check"></i> Actualisation automatique
-                            des graphiques</p>
-                        <p style="color: var(--neon-cyan); margin-top: 0.5rem;"><i class="fa-solid fa-check"></i> KPIs
-                            en direct (Température, Humidité)</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Slide 10: Perspectives -->
-        <div class="slide" id="slide-perspectives">
-            <div class="glass-panel stagger-container">
-                <h2 class="gradient-text stagger-item"
-                    style="font-size: 3rem; margin-bottom: 2rem; text-align: center;">Perspectives & Améliorations</h2>
-                
-                <p class="subtitle stagger-item" style="margin-bottom: 3rem; max-width: 900px;">
-                    Pour rendre l'application totalement <strong>complète et "Ready to Use"</strong> en environnement de production, voici les évolutions nécessaires :
-                </p>
-
-                <ul class="mission-list" style="max-width: 900px; margin: 0 auto;">
-                    <li class="mission-item stagger-item" style="border-left-color: #f1c40f;">
-                        <i class="fa-solid fa-shield-halved mission-icon" style="color: #f1c40f;"></i>
-                        <div><strong style="color:white; font-size: 1.2rem;">Sécurité & Authentification</strong> : Implémenter un système de login sur Streamlit et sécuriser les flux Kafka avec SSL/SASL.</div>
-                    </li>
-                    <li class="mission-item stagger-item" style="border-left-color: #2ecc71;">
-                        <i class="fa-solid fa-code-branch mission-icon" style="color: #2ecc71;"></i>
-                        <div><strong style="color:white; font-size: 1.2rem;">Déploiement Automatisé (CI/CD)</strong> : Conteneuriser avec <strong>Docker</strong> et utiliser GitHub Actions pour un déploiement fluide dans le Cloud.</div>
-                    </li>
-                    <li class="mission-item stagger-item" style="border-left-color: #e67e22;">
-                        <i class="fa-solid fa-bell mission-icon" style="color: #e67e22;"></i>
-                        <div><strong style="color:white; font-size: 1.2rem;">Système d'Alerting</strong> : Ajouter l'envoi de notifications (Email/SMS) dès qu'une anomalie météo critique est détectée dans le flux.</div>
-                    </li>
-                    <li class="mission-item stagger-item" style="border-left-color: var(--neon-cyan);">
-                        <i class="fa-solid fa-robot mission-icon" style="color: var(--neon-cyan);"></i>
-                        <div><strong style="color:white; font-size: 1.2rem;">Machine Learning</strong> : Intégrer un modèle d'IA pour prédire la météo des prochaines heures en fonction de l'historique en direct.</div>
-                    </li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- Slide 11: Conclusion -->
-        <div class="slide" id="slide-conclusion">
-            <div class="glass-panel stagger-container" style="text-align: center;">
-                <h2 class="title-massive stagger-item" style="font-size: 3rem; margin-bottom: 1rem;">Conclusion &
-                    Performances</h2>
-                
-                <p class="subtitle stagger-item" style="margin-bottom: 1.5rem; max-width: 900px; color: var(--text-main); font-size: 1.15rem; line-height: 1.5;">
-                    Le Big Data dépasse le statut de simple technologie : c'est le <strong style="color: var(--neon-cyan);">véritable moteur décisionnel</strong> des organisations modernes. Ce projet démontre qu'avec des outils performants comme Python, Kafka et Azure, nous pouvons transformer un flux continu d'informations brutes en <strong style="color: var(--neon-purple);">connaissances exploitables en temps réel</strong>.
-                </p>
-
-                <div class="grid-2 stagger-item"
-                    style="grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
-                    <div class="metric-card" style="padding: 1.5rem;">
-                        <div class="metric-value counter" data-target="500" style="font-size: 2.8rem;">0</div>
-                        <span style="color: var(--text-muted); font-size: 0.95rem;">Latence de Bout en Bout (ms)</span>
-                    </div>
-                    <div class="metric-card" style="padding: 1.5rem;">
-                        <div class="metric-value counter" data-target="100" style="font-size: 2.8rem;">0</div>
-                        <span style="color: var(--text-muted); font-size: 0.95rem;">% Durabilité des Données</span>
-                    </div>
-                    <div class="metric-card" style="padding: 1.5rem;">
-                        <div class="metric-value counter" data-target="99.9" style="font-size: 2.8rem;">0</div>
-                        <span style="color: var(--text-muted); font-size: 0.95rem;">% Disponibilité (Uptime)</span>
-                    </div>
-                </div>
-
-                <div class="stagger-item"
-                    style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--glass-border); display: inline-block;">
-                    <h3 style="color: white; font-size: 1.8rem; margin-bottom: 0.5rem;">Merci de votre attention</h3>
-                    <p style="color: var(--neon-cyan); font-size: 1.1rem;">Session Questions / Réponses</p>
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- Navigation Controls -->
-    <div class="controls">
-        <button class="btn-nav" id="prevBtn"><i class="fa-solid fa-arrow-left"></i></button>
-        <div class="progress-dots" id="dots-container"></div>
-        <div class="page-counter" id="page-counter" style="color: var(--text-muted); font-family: 'Space Grotesk', sans-serif; font-size: 1.1rem; font-weight: 600; letter-spacing: 2px; border-left: 1px solid rgba(255, 255, 255, 0.1); padding-left: 1.2rem; margin-left: 0.5rem; display: flex; align-items: center;">1 / 9</div>
-        <button class="btn-nav" id="nextBtn"><i class="fa-solid fa-arrow-right"></i></button>
-    </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            hljs.highlightAll(); // Syntax highlighting for Python
-
-            const slides = document.querySelectorAll('.slide');
-            const totalSlides = slides.length;
-            let currentSlide = 0;
-            let isAnimating = false;
-
-            const dotsContainer = document.getElementById('dots-container');
-            slides.forEach((_, index) => {
-                const dot = document.createElement('div');
-                dot.classList.add('dot');
-                if (index === 0) dot.classList.add('active');
-                dotsContainer.appendChild(dot);
-            });
-            const dots = document.querySelectorAll('.dot');
-
-            gsap.set('.slide', { opacity: 0, scale: 0.95, visibility: 'hidden' });
-            gsap.set(slides[0], { opacity: 1, scale: 1, visibility: 'visible' });
-            document.getElementById('page-counter').innerText = `1 / ${totalSlides}`;
-
-            animateSlideIn(slides[0]);
-
-            function animateCounters(slide) {
-                const counters = slide.querySelectorAll('.counter');
-                counters.forEach(counter => {
-                    const target = parseFloat(counter.getAttribute('data-target'));
-                    let val = { v: 0 };
-                    gsap.to(val, {
-                        v: target,
-                        duration: 2,
-                        ease: "power2.out",
-                        onUpdate: () => {
-                            // format decimal nicely if it has one
-                            counter.innerText = target % 1 === 0 ? Math.round(val.v) : val.v.toFixed(1);
-                            if (target === 500 && val.v > 499) counter.innerText = "<500";
-                        }
-                    });
-                });
-            }
-
-            function animateSlideIn(slide) {
-                const items = slide.querySelectorAll('.stagger-item');
-                gsap.fromTo(items,
-                    { opacity: 0, y: 30 },
-                    { opacity: 1, y: 0, duration: 0.8, stagger: 0.15, ease: "power3.out", delay: 0.2 }
-                );
-
-                if (slide.id === 'slide-conclusion') {
-                    setTimeout(() => animateCounters(slide), 800);
-                }
-            }
-
-            function goToSlide(index) {
-                if (isAnimating || index === currentSlide || index < 0 || index >= totalSlides) return;
-                isAnimating = true;
-
-                const outgoing = slides[currentSlide];
-                const incoming = slides[index];
-
-                dots[currentSlide].classList.remove('active');
-                dots[index].classList.add('active');
-                document.getElementById('page-counter').innerText = `${index + 1} / ${totalSlides}`;
-
-                gsap.to(outgoing, {
-                    opacity: 0, scale: 1.05, duration: 0.6, ease: "power2.inOut",
-                    onComplete: () => {
-                        outgoing.classList.remove('active');
-                        gsap.set(outgoing, { visibility: 'hidden' });
-                    }
-                });
-
-                incoming.classList.add('active');
-                gsap.set(incoming, { visibility: 'visible', scale: 0.95 });
-
-                gsap.to(incoming, {
-                    opacity: 1, scale: 1, duration: 0.6, ease: "power2.inOut", delay: 0.3,
-                    onComplete: () => {
-                        isAnimating = false;
-                        currentSlide = index;
-                    }
-                });
-
-                animateSlideIn(incoming);
-            }
-
-            document.getElementById('nextBtn').addEventListener('click', () => goToSlide(currentSlide + 1));
-            document.getElementById('prevBtn').addEventListener('click', () => goToSlide(currentSlide - 1));
-
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'ArrowRight' || e.key === 'Space') goToSlide(currentSlide + 1);
-                else if (e.key === 'ArrowLeft') goToSlide(currentSlide - 1);
-            });
-        });
-    </script>
+    updateSlide(0);
+  </script>
 </body>
-
 </html>
